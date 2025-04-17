@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.schemas import Review
 from app.predict import segmentation
 
 app = FastAPI()
@@ -11,6 +12,6 @@ def home():
 
 @app.post('/predict')
 def predict(review: Review):
-    data = review.to_list()
-    result = segmentation(data)[0]
+    data = [review.review]
+    result = segmentation(data)
     return result
