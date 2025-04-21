@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alexa Sentiment Detector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #ffffff;
+      color: #333;
+      font-family: 'Orbitron', sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 30px;
+      color: #0077cc;
+    }
+
+    textarea,
+    input[type="file"] {
+      width: 80%;
+      padding: 15px;
+      margin: 10px auto;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      font-size: 1rem;
+      background-color: #f9f9f9;
+    }
+
+    button {
+      padding: 12px 25px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #0077cc;
+      color: #fff;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    #result {
+      margin-top: 30px;
+      font-size: 1.2rem;
+    }
+
+    .animated-border {
+      height: 4px;
+      width: 60%;
+      margin: 20px auto;
+      background: linear-gradient(90deg, #0077cc, #00c6ff, #0077cc);
+      background-size: 200% 100%;
+      animation: moveBorder 3s linear infinite;
+      border-radius: 4px;
+    }
+
+    @keyframes moveBorder {
+      0% {
+        background-position: 0% 0%;
+      }
+
+      100% {
+        background-position: 200% 0%;
+      }
+    }
+
+    table {
+      width: 80%;
+      margin: 0 auto;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+
+    th {
+      background-color: #0077cc;
+      color: white;
+    }
+
+    #showMoreBtn {
+      display: none;
+      margin-top: 10px;
+    }
+
+    #chart-container {
+      width: 50%;
+      margin: 30px auto;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Alexa Sentiment Detector</h1>
+  <div class="animated-border"></div>
+
+  <form id="text-form">
+    <textarea id="review" rows="4" placeholder="Enter a review about Alexa..."></textarea><br />
+    <button type="submit">Predict</button>
+  </form>
+
+  <br />
+
+  <form id="file-form">
+    <input type="file" id="fileInput" accept=".csv" />
+    <button type="submit">Predict File</button>
+  </form>
+
+  <div id="result"></div>
+
+  <div id="chart-container">
+    <canvas id="sentimentChart"></canvas>
+  </div>
+
+  <button id="showMoreBtn">see more...</button>
+
+  <script>
+    const textForm = document.getElementById("text-form");
+    const fileForm = document.getElementById("file-form");
+    const resultDiv = document.getElementById("result");
+    const showMoreBtn = document.getElementById("showMoreBtn");
+    const chartContainer = document.getElementById("chart-container");
+    const chartCanvas = document.getElementById("sentimentChart");
+
+    let allPredictions = [];
+
+    textForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const review = document.getElementById("review").value;
+
+      const response = await fetch("http://127.0.0.1:8001/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ review })
+      });
+
+      const data = await response.json();
+      const label = data.prediction === 1 ? "Positive 😊" : "Negative 😞";
+      resultDiv.innerHTML = `<h2>Prediction: ${label}</h2>`;
+    };
+
+    fileForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById("fileInput").files[0];
+      const formData = new FormData();
+      formData.append("file", fileInput);
+
+      const response = await fetch("http://127.0.0.1:8001/predict_file", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+      allPredictions = data.predictions;
+
+      renderTable(allPredictions.slice(0, 3));
+      showMoreBtn.style.display = allPredictions.length > 3 ? "inline-block" : "none";
+
+      const counts = {
+        Positive: allPredictions.filter(p => p.prediction === 1).length,
+        Negative: allPredictions.filter(p => p.prediction === 0).length
+      };
+      renderChart(counts);
+    };
+
+    showMoreBtn.onclick = () => {
+      renderTable(allPredictions);
+      showMoreBtn.style.display = "none";
+    };
+
+    function renderTable(predictions) {
+      let html = `<h2>Batch Results</h2><table><thead><tr><th>Review</th><th>Prediction</th></tr></thead><tbody>`;
+      predictions.forEach(p => {
+        const label = p.prediction === 1 ? "Positive 😊" : "Negative 😞";
+        html += `<tr><td>${p.review}</td><td>${label}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+      resultDiv.innerHTML = html;
+    }
+
+    function renderChart(counts) {
+      new Chart(chartCanvas, {
+        type: 'pie',
+        data: {
+          labels: ['Positive 😊', 'Negative 😞'],
+          datasets: [{
+            data: [counts.Positive, counts.Negative],
+            backgroundColor: ['#00c6ff ', '#0077cc ']
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
+
+<!-- Inside <style> tag -->
+<style>
+  /* ... existing styles ... */
+
+  #chart-container {
+    width: 40%;
+    margin: 30px auto;
+  }
+
+  #showMoreBtn {
+    background: none;
+    border: none;
+    color: #0077cc;
+    font-size: 0.95rem;
+    margin-top: 10px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  #showMoreBtn:hover {
+    color: #005fa3;
+  }
+</style>
