@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
+
 from app.schemas import Review
-from app.predict import segmentation
+from app.predict import segmentation, predict_file
 
 app = FastAPI()
 
@@ -11,7 +12,13 @@ def home():
 
 
 @app.post('/predict')
-def predict(review: Review):
+async def predict(review: Review):
     data = [review.review]
     result = segmentation(data)
+    return result
+
+
+@app.post('/predict_file')
+async def predict_f(file: UploadFile = File(...)):
+    result = await predict_file(file)
     return result
